@@ -11,14 +11,14 @@ import java.util.List;
 public class TaskDAO {
 
     private int getOrCreateTagId(Connection conn, String tagName) throws Exception {
-        String findSql = "SELECT id FROM tags WHERE name=?";
+        String findSql = "select id from tags where name=?";
         try (PreparedStatement ps = conn.prepareStatement(findSql)) {
             ps.setString(1, tagName);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) return rs.getInt("id");
         }
 
-        String insertSql = "INSERT INTO tags(name) VALUES(?)";
+        String insertSql = "insert into tags(name) values(?)";
         try (PreparedStatement ps = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, tagName);
             ps.executeUpdate();
@@ -30,11 +30,8 @@ public class TaskDAO {
 
     private List<Tag> getTagsByTaskId(Connection conn, int taskId) throws Exception {
         List<Tag> tags = new ArrayList<>();
-        String sql = """
-            SELECT tg.id, tg.name
-            FROM tags tg
-            JOIN task_tags tt ON tg.id = tt.tag_id
-            WHERE tt.task_id = ?;
+        String sql = """ 
+        select tg.id, tg.name from tags tg join task_tags tt ON tg.id = tt.tag_id where tt.task_id = ?;
         """;
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -48,7 +45,7 @@ public class TaskDAO {
     }
 
     private void clearTagsOfTask(Connection conn, int taskId) throws Exception {
-        String sql = "DELETE FROM task_tags WHERE task_id=?";
+        String sql = "delete from task_tags where task_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, taskId);
             ps.executeUpdate();
@@ -56,7 +53,7 @@ public class TaskDAO {
     }
 
     private void insertLinks(Connection conn, int taskId, List<String> tagNames) throws Exception {
-        String linkSql = "INSERT INTO task_tags(task_id, tag_id) VALUES(?, ?)";
+        String linkSql = "insert into task_tags(task_id, tag_id) values(?, ?)";
 
         for (String tagName : tagNames) {
             if (tagName == null) continue;
@@ -74,7 +71,7 @@ public class TaskDAO {
     }
 
     public void insertWithTags(Task t, List<String> tagNames) {
-        String sqlTask = "INSERT INTO tasks(title, description, priority) VALUES (?, ?, ?)";
+        String sqlTask = "insert into tasks(title, description, priority) values(?, ?, ?) ";
 
         try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);
@@ -100,7 +97,7 @@ public class TaskDAO {
     }
 
     public void updateWithTags(Task t, List<String> tagNames) {
-        String sql = "UPDATE tasks SET title=?, description=?, priority=? WHERE id=?";
+        String sql = "update tasks set title=?, description=?, priority=? where id=?";
 
         try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);
@@ -124,19 +121,14 @@ public class TaskDAO {
 
     public List<Task> getAllWithTags() {
         List<Task> list = new ArrayList<>();
-        String sql = "SELECT * FROM tasks";
+        String sql = "select * from tasks";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                Task t = new Task(
-                        rs.getInt("id"),
-                        rs.getString("title"),
-                        rs.getString("description"),
-                        rs.getInt("priority")
-                );
+                Task t = new Task(rs.getInt("id"), rs.getString("title"), rs.getString("description"), rs.getInt("priority"));
                 t.setTags(getTagsByTaskId(conn, t.getId()));
                 list.add(t);
             }
@@ -150,7 +142,7 @@ public class TaskDAO {
 
     public List<Task> searchWithTags(String keyword) {
         List<Task> list = new ArrayList<>();
-        String sql = "SELECT * FROM tasks WHERE title LIKE ? OR description LIKE ?";
+        String sql = "select * from tasks where title like ? or description like ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -161,12 +153,7 @@ public class TaskDAO {
 
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                Task t = new Task(
-                        rs.getInt("id"),
-                        rs.getString("title"),
-                        rs.getString("description"),
-                        rs.getInt("priority")
-                );
+                Task t = new Task(rs.getInt("id"), rs.getString("title"), rs.getString("description"), rs.getInt("priority"));
                 t.setTags(getTagsByTaskId(conn, t.getId()));
                 list.add(t);
             }
@@ -180,19 +167,14 @@ public class TaskDAO {
 
     public List<Task> getAllSortedByPriorityWithTags(boolean asc) {
         List<Task> list = new ArrayList<>();
-        String sql = "SELECT * FROM tasks ORDER BY priority " + (asc ? "ASC" : "DESC");
+        String sql = "select * from tasks order by priority " + (asc ? "asc" : "desc");
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                Task t = new Task(
-                        rs.getInt("id"),
-                        rs.getString("title"),
-                        rs.getString("description"),
-                        rs.getInt("priority")
-                );
+                Task t = new Task(rs.getInt("id"), rs.getString("title"), rs.getString("description"), rs.getInt("priority"));
                 t.setTags(getTagsByTaskId(conn, t.getId()));
                 list.add(t);
             }
@@ -204,12 +186,18 @@ public class TaskDAO {
     }
 
 
-    public List<Task> getAll() { return getAllWithTags(); }
-    public void insert(Task t) { insertWithTags(t, List.of()); }
-    public void update(Task t) { updateWithTags(t, List.of()); }
+    public List<Task> getAll() {
+        return getAllWithTags();
+    }
+    public void insert(Task t) {
+        insertWithTags(t, List.of());
+    }
+    public void update(Task t) {
+        updateWithTags(t, List.of());
+    }
 
     public void delete(int id) {
-        String sql = "DELETE FROM tasks WHERE id=?";
+        String sql = "delete from tasks where id=?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -223,11 +211,7 @@ public class TaskDAO {
         List<Task> list = new ArrayList<>();
 
         String sql = """
-        SELECT DISTINCT t.*
-        FROM tasks t
-        JOIN task_tags tt ON t.id = tt.task_id
-        JOIN tags tg ON tg.id = tt.tag_id
-        WHERE tg.name LIKE ?;
+        select distinct t.* from tasks t join task_tags tt on t.id = tt.task_id join tags tg on tg.id = tt.tag_id where tg.name like ?;
     """;
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -237,12 +221,7 @@ public class TaskDAO {
             ResultSet rs = ps.executeQuery();
 
             while (rs.next()) {
-                Task t = new Task(
-                        rs.getInt("id"),
-                        rs.getString("title"),
-                        rs.getString("description"),
-                        rs.getInt("priority")
-                );
+                Task t = new Task(rs.getInt("id"), rs.getString("title"), rs.getString("description"), rs.getInt("priority"));
                 t.setTags(getTagsByTaskId(conn, t.getId()));
                 list.add(t);
             }

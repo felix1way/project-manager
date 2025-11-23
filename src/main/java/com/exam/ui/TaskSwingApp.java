@@ -19,14 +19,12 @@ public class TaskSwingApp extends JFrame {
 
     public TaskSwingApp() {
         setTitle("Task Manager");
-        setSize(800, 420);
+        setSize(900, 420);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
         setLocationRelativeTo(null);
 
-        model = new DefaultTableModel(
-                new Object[]{"ID", "Title", "Description", "Priority", "Tags"}, 0
-        );
+        model = new DefaultTableModel(new Object[]{"ID", "Title", "Description", "Priority", "Tags"}, 0);
         table = new JTable(model);
         loadData();
 
@@ -151,7 +149,7 @@ public class TaskSwingApp extends JFrame {
 
         int pr = Integer.parseInt(JOptionPane.showInputDialog("Priority:"));
 
-        String tagInput = JOptionPane.showInputDialog("Tags (vd: oop,jdbc,urgent):");
+        String tagInput = JOptionPane.showInputDialog("Tags (vd: oop,jdbc,...):");
         if (tagInput == null) tagInput = "";
 
         List<String> tagNames = List.of(tagInput.split(","));
@@ -180,7 +178,7 @@ public class TaskSwingApp extends JFrame {
         );
 
         String newTags = JOptionPane.showInputDialog(
-                "New Tags (vd: oop,jdbc):", table.getValueAt(row, 4)
+                "New Tags (vd: oop,jdbc,...):", table.getValueAt(row, 4)
         );
         if (newTags == null) newTags = "";
 

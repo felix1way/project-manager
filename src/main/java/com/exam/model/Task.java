@@ -1,5 +1,6 @@
 package com.exam.model;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -9,23 +10,27 @@ public class Task {
     private String title;
     private String description;
     private int priority;
+    private LocalDate deadline;
 
-    private List<Tag> tags = new ArrayList<>();
+    private Tag tag;
 
     public Task() {}
 
-    public Task(int id, String title, String description, int priority) {
+    public Task(String title, String description, int priority, LocalDate deadline) {
+        this.title = title;
+        this.description = description;
+        this.priority = priority;
+        this.deadline = deadline;
+    }
+
+    public Task(int id, String title, String description, int priority, LocalDate deadline) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.priority = priority;
+        this.deadline = deadline;
     }
 
-    public Task(String title, String description, int priority) {
-        this.title = title;
-        this.description = description;
-        this.priority = priority;
-    }
 
     public int getId() {
         return id;
@@ -52,15 +57,22 @@ public class Task {
     public void setPriority(int priority) {
         this.priority = priority;
     }
-
-    public List<Tag> getTags() {
-        return tags;
-    }
-    public void setTags(List<Tag> tags) {
-        this.tags = tags;
+    public LocalDate getDeadline() {
+        return deadline;
     }
 
-    public String tagsAsString() {
-        return tags.stream().map(Tag::getName).collect(Collectors.joining(", "));
+    public void setDeadline(LocalDate deadline) {
+        this.deadline = deadline;
+    }
+
+    public Tag getTag() {
+        return tag;
+    }
+    public void setTag(Tag tag) {
+        this.tag = tag;
+    }
+
+    public String tagAsString() {
+        return tag != null ? tag.getName() : "";
     }
 }

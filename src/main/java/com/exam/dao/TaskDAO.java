@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TaskDAO {
+public class TaskDAO implements ITaskDAO{
 
     public List<Task> getAllTasks() {
         List<Task> list = new ArrayList<>();

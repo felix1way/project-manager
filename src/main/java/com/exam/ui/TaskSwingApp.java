@@ -1,356 +1,324 @@
-package com.exam.ui;
+    package com.exam.ui;
 
-import com.exam.dao.TaskDAO;
-import com.exam.model.Task;
+    import com.exam.dao.TaskDAO;
+    import com.exam.model.Task;
 
-import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
-import java.awt.*;
-import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.List;
+    import javax.swing.*;
+    import javax.swing.table.DefaultTableCellRenderer;
+    import javax.swing.table.DefaultTableModel;
+    import java.awt.*;
+    import java.time.LocalDate;
+    import java.util.List;
 
-public class TaskSwingApp extends JFrame {
+    public class TaskSwingApp extends JFrame {
 
-    private TaskDAO dao = new TaskDAO();
-    private JTable table;
-    private DefaultTableModel model;
+        private TaskDAO dao = new TaskDAO();
+        private JTable table;
+        private DefaultTableModel model;
 
-    private JTextField txtSearch;
-    private JComboBox<String> cbTags;
+        private JTextField txtSearch;
+    //    private JTextField txtTagSearch;
+        private JComboBox<String> cbTags;
 
-    private void loadData() {
-        model.setRowCount(0);
-        List<Task> list = dao.getAllTasks();
-        for (Task t : list) {
-            model.addRow(new Object[]{
-                    t.getId(),
-                    t.getTitle(),
-                    t.getDescription(),
-                    t.getPriority(),
-                    t.tagAsString(),
-                    t.getDeadline()
-            });
+
+        private void loadData() {
+            model.setRowCount(0);
+            List<Task> list = dao.getAllTasks();
+            System.out.println(dao.getAllTasks().size());
+            for (Task t : list) {
+                model.addRow(new Object[]{
+                        t.getId(),
+                        t.getTitle(),
+                        t.getDescription(),
+                        t.getPriority(),
+                        t.tagAsString(),
+                        t.getDeadline()
+
+                });
+            }
         }
-    }
 
-    private void searchTasks() {
-        String keyword = txtSearch.getText().trim();
-        if (keyword.isEmpty()) {
+
+        private void searchTasks() {
+            String keyword = txtSearch.getText().trim();
+            if (keyword.isEmpty()) {
+                loadData();
+                return;
+            }
+
+            model.setRowCount(0);
+            List<Task> list = dao.searchWithTags(keyword);
+            for (Task t : list) {
+                model.addRow(new Object[]{
+                        t.getId(), t.getTitle(), t.getDescription(),
+                        t.getPriority(), t.tagAsString()
+                });
+            }
+        }
+
+    //    private void searchByTag() {
+    //        String tagKey = txtTagSearch.getText().trim();
+    //        if (tagKey.isEmpty()) {
+    //            loadData();
+    //            return;
+    //        }
+    //
+    //        model.setRowCount(0);
+    //        List<Task> list = dao.searchByTagWithTags(tagKey);
+    //        for (Task t : list) {
+    //            model.addRow(new Object[]{
+    //                    t.getId(), t.getTitle(), t.getDescription(),
+    //                    t.getPriority(), t.tagsAsString()
+    //            });
+    //        }
+    //    }
+
+        private void searchByTagCombo(String tag) {
+            if (tag == null || tag.equals("All")) {
+                loadData();
+                return;
+            }
+
+            model.setRowCount(0);
+            List<Task> list = dao.searchByTagWithTags(tag);
+            for (Task t : list) {
+                model.addRow(new Object[]{
+                        t.getId(), t.getTitle(), t.getDescription(),
+                        t.getPriority(), t.tagAsString()
+                });
+            }
+        }
+
+        private void loadTagsToComboBox(JComboBox<String> cb) {
+            cb.removeAllItems();
+            cb.addItem("All");
+            List<String> tags = dao.getAllTagNames();
+            for (String t : tags) cb.addItem(t);
+        }
+
+
+        private void sortTasks(boolean asc) {
+            model.setRowCount(0);
+            List<Task> list = dao.getAllSortedByPriorityWithTags(asc);
+            for (Task t : list) {
+                model.addRow(new Object[]{
+                        t.getId(), t.getTitle(), t.getDescription(),
+                        t.getPriority(), t.tagAsString()
+                });
+            }
+        }
+
+        private void addTask() {
+            String title = JOptionPane.showInputDialog("Title:");
+            if (title == null) return;
+
+            String desc = JOptionPane.showInputDialog("Description:");
+            if (desc == null) return;
+
+            int pr = Integer.parseInt(JOptionPane.showInputDialog("Priority:"));
+
+            String tagInput = JOptionPane.showInputDialog("Tags (vd: oop,jdbc,...):");
+            if (tagInput == null) tagInput = "";
+
+            List<String> tagNames = List.of(tagInput.split(","));
+
+            String deadlineStr = JOptionPane.showInputDialog("Deadline (yyyy-MM-dd):");
+            LocalDate deadline = (deadlineStr == null || deadlineStr.isEmpty()) ? null : LocalDate.parse(deadlineStr);
+
+            dao.insertWithTags(new Task(title, desc, pr, deadline), tagNames);
+
             loadData();
-            return;
+            loadTagsToComboBox(cbTags);
         }
 
-        model.setRowCount(0);
-        List<Task> list = dao.searchWithTags(keyword);
-        for (Task t : list) {
-            model.addRow(new Object[]{
-                    t.getId(),
-                    t.getTitle(),
-                    t.getDescription(),
-                    t.getPriority(),
-                    t.tagAsString(),
-                    t.getDeadline()
-            });
-        }
-    }
+        private void updateTask() {
+            int row = table.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(this, "Please select a task to update");
+                return;
+            }
 
-    private void searchByTagCombo(String tag) {
-        if (tag == null || tag.equals("All")) {
+            int id = (int) table.getValueAt(row, 0);
+
+            String newTitle = JOptionPane.showInputDialog("New Title:", table.getValueAt(row, 1));
+            if (newTitle == null) return;
+
+            String newDesc = JOptionPane.showInputDialog("New Description:", table.getValueAt(row, 2));
+            if (newDesc == null) return;
+
+            int newPriority = Integer.parseInt(
+                    JOptionPane.showInputDialog("New Priority:", table.getValueAt(row, 3))
+            );
+
+            String newTags = JOptionPane.showInputDialog(
+                    "New Tags (vd: oop,jdbc,...):", table.getValueAt(row, 4)
+            );
+            if (newTags == null) newTags = "";
+
+            List<String> tagNames = List.of(newTags.split(","));
+
+            String deadlineStr = JOptionPane.showInputDialog("New Deadline (yyyy-MM-dd):", table.getValueAt(row, 5));
+            LocalDate newDeadline = (deadlineStr == null || deadlineStr.isEmpty()) ? null : LocalDate.parse(deadlineStr);
+
+            dao.updateWithTags(new Task(id, newTitle, newDesc, newPriority, newDeadline), tagNames);
+
+
             loadData();
-            return;
+            loadTagsToComboBox(cbTags);
         }
 
-        model.setRowCount(0);
-        List<Task> list = dao.searchByTagWithTags(tag);
-        for (Task t : list) {
-            model.addRow(new Object[]{
-                    t.getId(),
-                    t.getTitle(),
-                    t.getDescription(),
-                    t.getPriority(),
-                    t.tagAsString(),
-                    t.getDeadline()
-            });
-        }
-    }
+        private void deleteTask() {
+            int row = table.getSelectedRow();
+            if (row == -1) return;
 
-    private void loadTagsToComboBox(JComboBox<String> cb) {
-        cb.removeAllItems();
-        cb.addItem("All");
-        List<String> tags = dao.getAllTagNames();
-        for (String t : tags) cb.addItem(t);
-    }
+            int id = (int) table.getValueAt(row, 0);
+            dao.delete(id);
 
-    private void sortTasks(boolean asc) {
-        model.setRowCount(0);
-        List<Task> list = dao.getAllSortedByPriorityWithTags(asc);
-        for (Task t : list) {
-            model.addRow(new Object[]{
-                    t.getId(),
-                    t.getTitle(),
-                    t.getDescription(),
-                    t.getPriority(),
-                    t.tagAsString(),
-                    t.getDeadline()
-            });
-        }
-    }
-
-    private void addTask() {
-
-        String title = JOptionPane.showInputDialog("Title:");
-        if (title == null || title.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Title is required!");
-            return;
+            loadData();
+            loadTagsToComboBox(cbTags);
         }
 
-        String desc = JOptionPane.showInputDialog("Description:");
-        if (desc == null || desc.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Description is required!");
-            return;
-        }
+        public TaskSwingApp() {
+            setTitle("Task Manager");
+            setSize(900, 420);
+            setDefaultCloseOperation(EXIT_ON_CLOSE);
+            setLayout(new BorderLayout());
+            setLocationRelativeTo(null);
 
-        String prStr = JOptionPane.showInputDialog("Priority (1-5):");
-        if (prStr == null || prStr.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Priority is required!");
-            return;
-        }
+            model = new DefaultTableModel(new Object[]{"ID", "Title", "Description", "Priority", "Tags", "Deadline"}, 0);
+            table = new JTable(model);
+            table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+                @Override
+                public Component getTableCellRendererComponent(JTable table,
+                                                               Object value,
+                                                               boolean isSelected,
+                                                               boolean hasFocus,
+                                                               int row,
+                                                               int column) {
+                    Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
-        int pr;
-        try {
-            pr = Integer.parseInt(prStr);
-            if (pr < 1 || pr > 5) {
-                JOptionPane.showMessageDialog(this, "Priority must be between 1 and 5!");
-                return;
-            }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Priority must be a number!");
-            return;
-        }
 
-        String tagInput = JOptionPane.showInputDialog("Tags (vd: oop,jdbc,...):");
-        if (tagInput == null || tagInput.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "At least ONE tag is required!");
-            return;
-        }
+                    if (column == 5 && value != null) {
+                        LocalDate deadline = (LocalDate) value;
+                        if (deadline.isBefore(LocalDate.now())) {
+                            c.setForeground(Color.RED);
+                        } else {
+                            c.setForeground(Color.BLACK);
+                        }
+                    } else {
+                        c.setForeground(Color.BLACK);
+                    }
 
-        List<String> tagNames = Arrays.stream(tagInput.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
-
-        if (tagNames.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Invalid tag format!");
-            return;
-        }
-
-        String deadlineStr = JOptionPane.showInputDialog("Deadline (yyyy-MM-dd):");
-        if (deadlineStr == null || deadlineStr.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Deadline is required!");
-            return;
-        }
-
-        LocalDate deadline;
-        try {
-            deadline = LocalDate.parse(deadlineStr);
-            if (deadline.isBefore(LocalDate.now())) {
-                JOptionPane.showMessageDialog(this, "Deadline cannot be in the past!");
-                return;
-            }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Deadline must be yyyy-MM-dd");
-            return;
-        }
-
-        dao.insertWithTags(new Task(title, desc, pr, deadline), tagNames);
-
-        loadData();
-        loadTagsToComboBox(cbTags);
-    }
-
-    private void updateTask() {
-        int row = table.getSelectedRow();
-        if (row == -1) {
-            JOptionPane.showMessageDialog(this, "Please select a task to update");
-            return;
-        }
-
-        int id = (int) table.getValueAt(row, 0);
-
-        String newTitle = JOptionPane.showInputDialog("New Title:", table.getValueAt(row, 1));
-        if (newTitle == null || newTitle.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Title cannot be empty!");
-            return;
-        }
-
-        String newDesc = JOptionPane.showInputDialog("New Description:", table.getValueAt(row, 2));
-        if (newDesc == null || newDesc.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Description cannot be empty!");
-            return;
-        }
-
-        String prStr = JOptionPane.showInputDialog("New Priority (1-5):", table.getValueAt(row, 3));
-        int newPriority;
-        try {
-            newPriority = Integer.parseInt(prStr);
-            if (newPriority < 1 || newPriority > 5) {
-                JOptionPane.showMessageDialog(this, "Priority must be between 1 and 5!");
-                return;
-            }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Priority must be a number!");
-            return;
-        }
-
-        String newTags = JOptionPane.showInputDialog(
-                "New Tags (vd: oop,jdbc,...):", table.getValueAt(row, 4)
-        );
-
-        if (newTags == null || newTags.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "At least ONE tag is required!");
-            return;
-        }
-
-        List<String> tagNames = Arrays.stream(newTags.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
-
-        if (tagNames.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Invalid tag format!");
-            return;
-        }
-
-        String deadlineStr = JOptionPane.showInputDialog(
-                "New Deadline (yyyy-MM-dd):", table.getValueAt(row, 5)
-        );
-
-        LocalDate newDeadline;
-        try {
-            newDeadline = LocalDate.parse(deadlineStr);
-            if (newDeadline.isBefore(LocalDate.now())) {
-                JOptionPane.showMessageDialog(this, "Deadline cannot be in the past!");
-                return;
-            }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Deadline must be yyyy-MM-dd");
-            return;
-        }
-
-        dao.updateWithTags(new Task(id, newTitle, newDesc, newPriority, newDeadline), tagNames);
-
-        loadData();
-        loadTagsToComboBox(cbTags);
-    }
-
-    private void deleteTask() {
-        int row = table.getSelectedRow();
-        if (row == -1) return;
-
-        int id = (int) table.getValueAt(row, 0);
-        dao.delete(id);
-
-        loadData();
-        loadTagsToComboBox(cbTags);
-    }
-
-    public TaskSwingApp() {
-        setTitle("Task Manager");
-        setSize(900, 420);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setLayout(new BorderLayout());
-        setLocationRelativeTo(null);
-
-        model = new DefaultTableModel(
-                new Object[]{"ID", "Title", "Description", "Priority", "Tags", "Deadline"}, 0
-        );
-
-        table = new JTable(model);
-        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(
-                    JTable table, Object value, boolean isSelected,
-                    boolean hasFocus, int row, int column) {
-
-                Component c = super.getTableCellRendererComponent(
-                        table, value, isSelected, hasFocus, row, column
-                );
-
-                if (isSelected) {
-                    c.setForeground(table.getSelectionForeground());
-                    c.setBackground(table.getSelectionBackground());
                     return c;
                 }
+            });
+            loadData();
 
-                c.setForeground(Color.BLACK);
-                c.setBackground(Color.WHITE);
+            JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 
-                Object deadlineObj = table.getModel().getValueAt(row, 5);
-                if (deadlineObj instanceof LocalDate deadline) {
-                    if (deadline.isBefore(LocalDate.now())) {
-                        c.setForeground(Color.RED);
+            txtSearch = new JTextField(15);
+            JButton btnSearch = new JButton("Search");
+            JButton btnClear = new JButton("Clear");
+
+    //      btnSearch.addActionListener(e -> searchTasks());
+            btnClear.addActionListener(e -> {
+                txtSearch.setText("");
+                cbTags.setSelectedItem("All"); // reset tag filter
+                loadData();
+            });
+
+
+            topPanel.add(new JLabel("Keyword:"));
+            topPanel.add(txtSearch);
+            topPanel.add(btnSearch);
+            topPanel.add(btnClear);
+
+    //        txtTagSearch = new JTextField(10);
+    //        JButton btnSearchTag = new JButton("Search Tag");
+    //        btnSearchTag.addActionListener(e -> searchByTag());
+    //
+    //        topPanel.add(new JLabel("Tag (text):"));
+    //        topPanel.add(txtTagSearch);
+    //        topPanel.add(btnSearchTag);
+
+            cbTags = new JComboBox<>();
+            loadTagsToComboBox(cbTags);
+
+            cbTags.addActionListener(e -> {
+                String tag = (String) cbTags.getSelectedItem();
+                searchByTagCombo(tag);
+            });
+
+            topPanel.add(new JLabel("Tag (select):"));
+            topPanel.add(cbTags);
+
+            String[] sortOptions = {"Priority Asc", "Priority Desc"};
+            JComboBox<String> cbSort = new JComboBox<>(sortOptions);
+            cbSort.addActionListener(e -> sortTasks(cbSort.getSelectedIndex() == 0));
+
+            topPanel.add(new JLabel("Sort:"));
+            topPanel.add(cbSort);
+
+            JButton btnAdd = new JButton("Add");
+            btnAdd.addActionListener(e -> addTask());
+
+            JButton btnUpdate = new JButton("Update");
+            btnUpdate.addActionListener(e -> updateTask());
+
+            JButton btnDelete = new JButton("Delete");
+            btnDelete.addActionListener(e -> deleteTask());
+
+            JPanel bottomPanel = new JPanel();
+            bottomPanel.add(btnAdd);
+            bottomPanel.add(btnUpdate);
+            bottomPanel.add(btnDelete);
+            JPanel tagPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            JButton btnAddTag = new JButton("Add Tag");
+            JButton btnDeleteTag = new JButton("Delete Tag");
+
+            btnAddTag.addActionListener(e -> {
+                String tagName = JOptionPane.showInputDialog("Enter new tag name:");
+                if (tagName != null && !tagName.trim().isEmpty()) {
+                    dao.insertTag(tagName.trim());
+                    loadTagsToComboBox(cbTags);
+                }
+            });
+
+            btnDeleteTag.addActionListener(e -> {
+                String tagName = (String) cbTags.getSelectedItem();
+                if (tagName != null && !tagName.equals("All")) {
+                    int confirm = JOptionPane.showConfirmDialog(this,
+                            "Are you sure you want to delete tag '" + tagName + "'?",
+                            "Confirm Delete", JOptionPane.YES_NO_OPTION);
+                    if (confirm == JOptionPane.YES_OPTION) {
+                        dao.deleteTag(tagName);
+                        loadTagsToComboBox(cbTags);
+                        loadData();
                     }
                 }
+            });
 
-                return c;
-            }
-        });
+            tagPanel.add(btnAddTag);
+            tagPanel.add(btnDeleteTag);
 
+            JPanel northPanel = new JPanel(new BorderLayout());
+            northPanel.add(topPanel, BorderLayout.NORTH);
+            northPanel.add(tagPanel, BorderLayout.SOUTH);
 
-        loadData();
+            add(northPanel, BorderLayout.NORTH);
+            add(new JScrollPane(table), BorderLayout.CENTER);
+            add(bottomPanel, BorderLayout.SOUTH);
+        }
 
-        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        public static void main(String[] args) {
+            new TaskSwingApp().setVisible(true);
+        }
 
-        txtSearch = new JTextField(15);
-        JButton btnSearch = new JButton("Search");
-        JButton btnClear = new JButton("Clear");
+//        public static void main(String[] args) {
+//            TaskDAO dao = new TaskDAO();
+//            var list = dao.getAllWithTags();
+//            System.out.println("TASK COUNT = " + list.size());
+//            for (var t : list) System.out.println(t.getTitle());
+//        }
 
-        btnSearch.addActionListener(e -> searchTasks());
-        btnClear.addActionListener(e -> {
-            txtSearch.setText("");
-            cbTags.setSelectedItem("All");
-            loadData();
-        });
-
-        topPanel.add(new JLabel("Keyword:"));
-        topPanel.add(txtSearch);
-        topPanel.add(btnSearch);
-        topPanel.add(btnClear);
-
-        cbTags = new JComboBox<>();
-        loadTagsToComboBox(cbTags);
-        cbTags.addActionListener(e -> searchByTagCombo((String) cbTags.getSelectedItem()));
-
-        topPanel.add(new JLabel("Tag:"));
-        topPanel.add(cbTags);
-
-        JComboBox<String> cbSort = new JComboBox<>(new String[]{"Priority Asc", "Priority Desc"});
-        cbSort.addActionListener(e -> sortTasks(cbSort.getSelectedIndex() == 0));
-
-        topPanel.add(new JLabel("Sort:"));
-        topPanel.add(cbSort);
-
-        JButton btnAdd = new JButton("Add");
-        JButton btnUpdate = new JButton("Update");
-        JButton btnDelete = new JButton("Delete");
-
-        btnAdd.addActionListener(e -> addTask());
-        btnUpdate.addActionListener(e -> updateTask());
-        btnDelete.addActionListener(e -> deleteTask());
-
-        JPanel bottomPanel = new JPanel();
-        bottomPanel.add(btnAdd);
-        bottomPanel.add(btnUpdate);
-        bottomPanel.add(btnDelete);
-
-        add(topPanel, BorderLayout.NORTH);
-        add(new JScrollPane(table), BorderLayout.CENTER);
-        add(bottomPanel, BorderLayout.SOUTH);
     }
-
-    public static void main(String[] args) {
-        new TaskSwingApp().setVisible(true);
-    }
-}

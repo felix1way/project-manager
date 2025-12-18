@@ -11,7 +11,6 @@ import java.util.List;
 public class TaskDAO implements ITaskDAO {
 
     private Integer getOrCreateTagId(Connection conn, String tagName) throws SQLException {
-        // 1. Check existing tag
         String selectSql = "SELECT id FROM tags WHERE name = ?";
         try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
             ps.setString(1, tagName);

@@ -5,7 +5,10 @@ import java.util.List;
 
 public interface ITaskDAO {
     List<Task> getAllTasks();
-    void insert(Task t);
-    void update(Task t);
+    List<Task> search(String keyword);
+    List<Task> sortByPriority(boolean asc);
+    void insert(Task task);
+    void update(Task task);
     void delete(int id);
 }
+

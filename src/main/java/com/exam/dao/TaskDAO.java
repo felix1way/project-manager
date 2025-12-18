@@ -10,9 +10,6 @@ import java.util.List;
 
 public class TaskDAO implements ITaskDAO {
 
-    // =========================
-    // GET OR CREATE TAG
-    // =========================
     private Integer getOrCreateTagId(Connection conn, String tagName) throws SQLException {
         // 1. Check existing tag
         String selectSql = "SELECT id FROM tags WHERE name = ?";
@@ -24,7 +21,6 @@ public class TaskDAO implements ITaskDAO {
             }
         }
 
-        // 2. Insert new tag
         String insertSql = "INSERT INTO tags(name) VALUES(?)";
         try (PreparedStatement ps = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, tagName);
@@ -38,9 +34,6 @@ public class TaskDAO implements ITaskDAO {
         return null;
     }
 
-    // =========================
-    // GET ALL TASKS
-    // =========================
     @Override
     public List<Task> getAllTasks() {
         List<Task> tasks = new ArrayList<>();
@@ -52,9 +45,7 @@ public class TaskDAO implements ITaskDAO {
                 LEFT JOIN tags g ON t.tag_id = g.id
                 """;
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 tasks.add(mapRowToTask(rs));
@@ -67,9 +58,6 @@ public class TaskDAO implements ITaskDAO {
         return tasks;
     }
 
-    // =========================
-    // INSERT TASK (FIXED)
-    // =========================
     @Override
     public void insert(Task task) {
         String sql = """
@@ -77,8 +65,7 @@ public class TaskDAO implements ITaskDAO {
                 VALUES (?, ?, ?, ?, ?)
                 """;
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, task.getTitle());
             ps.setString(2, task.getDescription());
@@ -104,9 +91,6 @@ public class TaskDAO implements ITaskDAO {
         }
     }
 
-    // =========================
-    // UPDATE TASK (FIXED)
-    // =========================
     @Override
     public void update(Task task) {
         String sql = """
@@ -115,8 +99,7 @@ public class TaskDAO implements ITaskDAO {
                 WHERE id = ?
                 """;
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, task.getTitle());
             ps.setString(2, task.getDescription());
@@ -143,15 +126,11 @@ public class TaskDAO implements ITaskDAO {
         }
     }
 
-    // =========================
-    // DELETE TASK
-    // =========================
     @Override
     public void delete(int id) {
         String sql = "DELETE FROM tasks WHERE id = ?";
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, id);
             ps.executeUpdate();
@@ -166,15 +145,14 @@ public class TaskDAO implements ITaskDAO {
         List<Task> tasks = new ArrayList<>();
 
         String sql = """
-            SELECT t.id, t.title, t.description, t.priority, t.deadline,
-                   g.id AS tag_id, g.name AS tag_name
-            FROM tasks t
-            LEFT JOIN tags g ON t.tag_id = g.id
-            WHERE t.title LIKE ? OR t.description LIKE ?
-            """;
+                SELECT t.id, t.title, t.description, t.priority, t.deadline,
+                       g.id AS tag_id, g.name AS tag_name
+                FROM tasks t
+                LEFT JOIN tags g ON t.tag_id = g.id
+                WHERE t.title LIKE ? OR t.description LIKE ?
+                """;
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
             String key = "%" + keyword + "%";
             ps.setString(1, key);
@@ -193,10 +171,6 @@ public class TaskDAO implements ITaskDAO {
         return tasks;
     }
 
-
-    // =========================
-    // SORT BY PRIORITY
-    // =========================
     public List<Task> sortByPriority(boolean asc) {
         List<Task> tasks = new ArrayList<>();
         String order = asc ? "ASC" : "DESC";
@@ -209,9 +183,7 @@ public class TaskDAO implements ITaskDAO {
                 ORDER BY t.priority %s
                 """.formatted(order);
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 tasks.add(mapRowToTask(rs));
@@ -224,9 +196,6 @@ public class TaskDAO implements ITaskDAO {
         return tasks;
     }
 
-    // =========================
-    // MAP RESULTSET
-    // =========================
     private Task mapRowToTask(ResultSet rs) throws Exception {
         Task task = new Task();
         task.setId(rs.getInt("id"));

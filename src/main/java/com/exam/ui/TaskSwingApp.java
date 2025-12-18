@@ -44,9 +44,7 @@ public class TaskSwingApp extends JFrame {
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        model = new DefaultTableModel(
-                new String[]{"ID", "Title", "Description", "Priority", "Deadline", "Tag"}, 0
-        ) {
+        model = new DefaultTableModel(new String[]{"ID", "Title", "Description", "Priority", "Deadline", "Tag"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -56,20 +54,10 @@ public class TaskSwingApp extends JFrame {
         table = new JTable(model);
         JScrollPane scrollPane = new JScrollPane(table);
 
-        // ================= RENDER OVERDUE TASK =================
         table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
-            public Component getTableCellRendererComponent(
-                    JTable table,
-                    Object value,
-                    boolean isSelected,
-                    boolean hasFocus,
-                    int row,
-                    int column
-            ) {
-                Component c = super.getTableCellRendererComponent(
-                        table, value, isSelected, hasFocus, row, column
-                );
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
                 c.setForeground(Color.BLACK);
                 c.setBackground(Color.WHITE);
@@ -123,7 +111,6 @@ public class TaskSwingApp extends JFrame {
         add(scrollPane, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
 
-        // ================= EVENTS =================
         btnAdd.addActionListener(e -> showAddDialog());
         btnUpdate.addActionListener(e -> showUpdateDialog());
         btnDelete.addActionListener(e -> deleteSelectedTask());
@@ -135,8 +122,6 @@ public class TaskSwingApp extends JFrame {
         btnReload.addActionListener(e -> loadData());
     }
 
-    // ================= DATA =================
-
     private void loadData() {
         List<Task> tasks = dao.getAllTasks();
         render(tasks);
@@ -146,14 +131,7 @@ public class TaskSwingApp extends JFrame {
     private void render(List<Task> tasks) {
         model.setRowCount(0);
         for (Task t : tasks) {
-            model.addRow(new Object[]{
-                    t.getId(),
-                    t.getTitle(),
-                    t.getDescription(),
-                    t.getPriority(),
-                    t.getDeadline(),
-                    t.getTag() != null ? t.getTag().getName() : ""
-            });
+            model.addRow(new Object[]{t.getId(), t.getTitle(), t.getDescription(), t.getPriority(), t.getDeadline(), t.getTag() != null ? t.getTag().getName() : ""});
         }
     }
 
@@ -173,8 +151,6 @@ public class TaskSwingApp extends JFrame {
         cbTags.setSelectedIndex(0);
     }
 
-    // ================= SEARCH & SORT =================
-
     private void searchByKeyword() {
         String keyword = txtSearch.getText().trim();
         if (keyword.isEmpty()) {
@@ -191,18 +167,12 @@ public class TaskSwingApp extends JFrame {
             return;
         }
 
-        render(
-                dao.getAllTasks().stream()
-                        .filter(t -> t.getTag() != null && t.getTag().getName().equals(tag))
-                        .toList()
-        );
+        render(dao.getAllTasks().stream().filter(t -> t.getTag() != null && t.getTag().getName().equals(tag)).toList());
     }
 
     private void sortByPriority(boolean asc) {
         render(((TaskDAO) dao).sortByPriority(asc));
     }
-
-    // ================= CRUD =================
 
     private void showAddDialog() {
         JTextField txtTitle = new JTextField();
@@ -211,22 +181,12 @@ public class TaskSwingApp extends JFrame {
         JTextField txtDeadline = new JTextField();
         JTextField txtTag = new JTextField();
 
-        Object[] fields = {
-                "Title:", txtTitle,
-                "Description:", txtDesc,
-                "Priority (1-5):", txtPriority,
-                "Deadline (yyyy-MM-dd):", txtDeadline,
-                "Tag:", txtTag
-        };
+        Object[] fields = {"Title:", txtTitle, "Description:", txtDesc, "Priority (1-5):", txtPriority, "Deadline (yyyy-MM-dd):", txtDeadline, "Tag:", txtTag};
 
-        int result = JOptionPane.showConfirmDialog(
-                this, fields, "Add Task", JOptionPane.OK_CANCEL_OPTION
-        );
+        int result = JOptionPane.showConfirmDialog(this, fields, "Add Task", JOptionPane.OK_CANCEL_OPTION);
         if (result != JOptionPane.OK_OPTION) return;
 
-        Task task = validateAndBuildTask(
-                null, txtTitle, txtDesc, txtPriority, txtDeadline, txtTag
-        );
+        Task task = validateAndBuildTask(null, txtTitle, txtDesc, txtPriority, txtDeadline, txtTag);
         if (task == null) return;
 
         dao.insert(task);
@@ -245,29 +205,15 @@ public class TaskSwingApp extends JFrame {
         JTextField txtTitle = new JTextField(model.getValueAt(row, 1).toString());
         JTextField txtDesc = new JTextField(model.getValueAt(row, 2).toString());
         JTextField txtPriority = new JTextField(model.getValueAt(row, 3).toString());
-        JTextField txtDeadline = new JTextField(
-                model.getValueAt(row, 4) != null ? model.getValueAt(row, 4).toString() : ""
-        );
-        JTextField txtTag = new JTextField(
-                model.getValueAt(row, 5) != null ? model.getValueAt(row, 5).toString() : ""
-        );
+        JTextField txtDeadline = new JTextField(model.getValueAt(row, 4) != null ? model.getValueAt(row, 4).toString() : "");
+        JTextField txtTag = new JTextField(model.getValueAt(row, 5) != null ? model.getValueAt(row, 5).toString() : "");
 
-        Object[] fields = {
-                "Title:", txtTitle,
-                "Description:", txtDesc,
-                "Priority (1-5):", txtPriority,
-                "Deadline (yyyy-MM-dd):", txtDeadline,
-                "Tag:", txtTag
-        };
+        Object[] fields = {"Title:", txtTitle, "Description:", txtDesc, "Priority (1-5):", txtPriority, "Deadline (yyyy-MM-dd):", txtDeadline, "Tag:", txtTag};
 
-        int result = JOptionPane.showConfirmDialog(
-                this, fields, "Update Task", JOptionPane.OK_CANCEL_OPTION
-        );
+        int result = JOptionPane.showConfirmDialog(this, fields, "Update Task", JOptionPane.OK_CANCEL_OPTION);
         if (result != JOptionPane.OK_OPTION) return;
 
-        Task task = validateAndBuildTask(
-                id, txtTitle, txtDesc, txtPriority, txtDeadline, txtTag
-        );
+        Task task = validateAndBuildTask(id, txtTitle, txtDesc, txtPriority, txtDeadline, txtTag);
         if (task == null) return;
 
         dao.update(task);
@@ -281,12 +227,7 @@ public class TaskSwingApp extends JFrame {
             return;
         }
 
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Delete this task?",
-                "Confirm",
-                JOptionPane.YES_NO_OPTION
-        );
+        int confirm = JOptionPane.showConfirmDialog(this, "Delete this task?", "Confirm", JOptionPane.YES_NO_OPTION);
         if (confirm != JOptionPane.YES_OPTION) return;
 
         int id = (int) model.getValueAt(row, 0);
@@ -294,16 +235,7 @@ public class TaskSwingApp extends JFrame {
         loadData();
     }
 
-    // ================= VALIDATION =================
-
-    private Task validateAndBuildTask(
-            Integer id,
-            JTextField txtTitle,
-            JTextField txtDesc,
-            JTextField txtPriority,
-            JTextField txtDeadline,
-            JTextField txtTag
-    ) {
+    private Task validateAndBuildTask(Integer id, JTextField txtTitle, JTextField txtDesc, JTextField txtPriority, JTextField txtDeadline, JTextField txtTag) {
         String title = txtTitle.getText().trim();
         if (title.isEmpty()) {
             showError("Title must not be empty");
@@ -345,12 +277,7 @@ public class TaskSwingApp extends JFrame {
     }
 
     private void showError(String message) {
-        JOptionPane.showMessageDialog(
-                this,
-                message,
-                "Error",
-                JOptionPane.ERROR_MESSAGE
-        );
+        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
     public static void main(String[] args) {

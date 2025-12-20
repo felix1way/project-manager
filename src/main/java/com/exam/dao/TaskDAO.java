@@ -1,382 +1,217 @@
 package com.exam.dao;
 
 import com.exam.database.DatabaseConnection;
-import com.exam.model.Tag;
 import com.exam.model.Task;
+import com.exam.model.Tag;
 
 import java.sql.*;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TaskDAO implements ITaskDAO{
+public class TaskDAO implements ITaskDAO {
 
-    public List<Task> getAllTasks() {
-        List<Task> list = new ArrayList<>();
-
-        String sql = "select t.id as id, t.title, t.description, t.priority, t.deadline, " +
-                "tg.id as tag_id, tg.name as tag_name " +
-                "from tasks t left join tags tg on t.tag_id = tg.id";
-
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                Task task = new Task();
-                task.setId(rs.getInt("id"));
-                task.setTitle(rs.getString("title"));
-                task.setDescription(rs.getString("description"));
-                task.setPriority(rs.getInt("priority"));
-
-                if (rs.getDate("deadline") != null) {
-                    task.setDeadline(rs.getDate("deadline").toLocalDate());
-                }
-
-                if (rs.getInt("tag_id") != 0) {
-                    Tag tag = new Tag(rs.getInt("tag_id"), rs.getString("tag_name"));
-                    task.setTag(tag);
-                }
-
-                list.add(task);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return list;
-    }
-
-
-    private int getOrCreateTagId(Connection conn, String tagName) throws Exception {
-        String findSql = "select id from tags where name=?";
-        try (PreparedStatement ps = conn.prepareStatement(findSql)) {
+    private Integer getOrCreateTagId(Connection conn, String tagName) throws SQLException {
+        String selectSql = "SELECT id FROM tags WHERE name = ?";
+        try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
             ps.setString(1, tagName);
             ResultSet rs = ps.executeQuery();
-            if (rs.next()) return rs.getInt("id");
+            if (rs.next()) {
+                return rs.getInt("id");
+            }
         }
 
-        String insertSql = "insert into tags(name) values(?)";
+        String insertSql = "INSERT INTO tags(name) VALUES(?)";
         try (PreparedStatement ps = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, tagName);
             ps.executeUpdate();
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) return keys.getInt(1);
-        }
-        throw new RuntimeException("Cannot create tag");
-    }
-
-    private Tag getTagByTaskId(Connection conn, int taskId) throws Exception {
-        String sql = "select tg.id, tg.name from tags tg join task_tags tt ON tg.id = tt.tag_id where tt.task_id=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, taskId);
-            ResultSet rs = ps.executeQuery();
+            ResultSet rs = ps.getGeneratedKeys();
             if (rs.next()) {
-                return new Tag(rs.getInt("id"), rs.getString("name"));
+                return rs.getInt(1);
             }
         }
+
         return null;
     }
 
+    @Override
+    public List<Task> getAllTasks() {
+        List<Task> tasks = new ArrayList<>();
 
+        String sql = """
+                SELECT t.id, t.title, t.description, t.priority, t.deadline,
+                       g.id AS tag_id, g.name AS tag_name
+                FROM tasks t
+                LEFT JOIN tags g ON t.tag_id = g.id
+                """;
 
-    private void clearTagsOfTask(Connection conn, int taskId) throws Exception {
-        String sql = "delete from task_tags where task_id=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, taskId);
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                tasks.add(mapRowToTask(rs));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return tasks;
+    }
+
+    @Override
+    public void insert(Task task) {
+        String sql = """
+                INSERT INTO tasks (title, description, priority, deadline, tag_id)
+                VALUES (?, ?, ?, ?, ?)
+                """;
+
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, task.getTitle());
+            ps.setString(2, task.getDescription());
+            ps.setInt(3, task.getPriority());
+
+            if (task.getDeadline() != null) {
+                ps.setDate(4, Date.valueOf(task.getDeadline()));
+            } else {
+                ps.setNull(4, Types.DATE);
+            }
+
+            if (task.getTag() != null) {
+                Integer tagId = getOrCreateTagId(conn, task.getTag().getName());
+                ps.setInt(5, tagId);
+            } else {
+                ps.setNull(5, Types.INTEGER);
+            }
+
             ps.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    private void insertLinks(Connection conn, int taskId, String tagName) throws Exception {
-        if (tagName == null || tagName.trim().isEmpty()) return;
+    @Override
+    public void update(Task task) {
+        String sql = """
+                UPDATE tasks
+                SET title = ?, description = ?, priority = ?, deadline = ?, tag_id = ?
+                WHERE id = ?
+                """;
 
-        int tagId = getOrCreateTagId(conn, tagName.trim());
-        String linkSql = "insert into task_tags(task_id, tag_id) values(?, ?)";
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
-        try (PreparedStatement ps = conn.prepareStatement(linkSql)) {
-            ps.setInt(1, taskId);
-            ps.setInt(2, tagId);
+            ps.setString(1, task.getTitle());
+            ps.setString(2, task.getDescription());
+            ps.setInt(3, task.getPriority());
+
+            if (task.getDeadline() != null) {
+                ps.setDate(4, Date.valueOf(task.getDeadline()));
+            } else {
+                ps.setNull(4, Types.DATE);
+            }
+
+            if (task.getTag() != null) {
+                Integer tagId = getOrCreateTagId(conn, task.getTag().getName());
+                ps.setInt(5, tagId);
+            } else {
+                ps.setNull(5, Types.INTEGER);
+            }
+
+            ps.setInt(6, task.getId());
             ps.executeUpdate();
-        }
-    }
-
-
-    public void insertWithTags(Task t, List<String> tagNames) {
-        String sqlTask = "insert into tasks(title, description, priority, deadline) values(?, ?, ?, ?)";
-
-        try (Connection conn = DatabaseConnection.getConnection()) {
-            conn.setAutoCommit(false);
-
-            int taskId;
-            try (PreparedStatement ps = conn.prepareStatement(sqlTask, Statement.RETURN_GENERATED_KEYS)) {
-                ps.setString(1, t.getTitle());
-                ps.setString(2, t.getDescription());
-                ps.setInt(3, t.getPriority());
-                if (t.getDeadline() != null) {
-                    ps.setDate(4, Date.valueOf(t.getDeadline()));
-                } else {
-                    ps.setDate(4, null);
-                }
-
-                ps.executeUpdate();
-
-                try (ResultSet keys = ps.getGeneratedKeys()) {
-                    if (keys.next()) {
-                        taskId = keys.getInt(1);
-                    } else {
-                        throw new RuntimeException("Failed to insert task");
-                    }
-                }
-            }
-
-            insertLinks(conn, taskId, t.getTag() != null ? t.getTag().getName() : null);
-
-            conn.commit();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void updateWithTags(Task t, List<String> tagNames) {
-        String sql = "update tasks set title=?, description=?, priority=?, deadline=? where id=?";
-
-        try (Connection conn = DatabaseConnection.getConnection()) {
-            conn.setAutoCommit(false);
-
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, t.getTitle());
-                ps.setString(2, t.getDescription());
-                ps.setInt(3, t.getPriority());
-                if (t.getDeadline() != null) {
-                    ps.setDate(4, Date.valueOf(t.getDeadline()));
-                } else {
-                    ps.setDate(4, null);
-                }
-                ps.setInt(5, t.getId());
-
-                ps.executeUpdate();
-            }
-
-            clearTagsOfTask(conn, t.getId());
-            clearTagsOfTask(conn, t.getId());
-            insertLinks(conn, t.getId(), t.getTag() != null ? t.getTag().getName() : null);
-
-            conn.commit();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    public List<Task> getAllWithTags() {
-        List<Task> list = new ArrayList<>();
-        String sql = "select * from tasks";
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                Date dl = rs.getDate("deadline");
-                LocalDate deadline = dl != null ? dl.toLocalDate() : null;
-
-                Task t = new Task(
-                        rs.getInt("id"),
-                        rs.getString("title"),
-                        rs.getString("description"),
-                        rs.getInt("priority"),
-                        deadline
-                );
-
-                t.setTag(getTagByTaskId(conn, t.getId()));
-                list.add(t);
-            }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        return list;
     }
 
-
-
-    public List<Task> searchWithTags(String keyword) {
-        List<Task> list = new ArrayList<>();
-        String sql = "select * from tasks where title like ? or description like ?";
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            String pattern = "%" + keyword + "%";
-            ps.setString(1, pattern);
-            ps.setString(2, pattern);
-
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Date dl = rs.getDate("deadline");
-                LocalDate deadline = dl != null ? dl.toLocalDate() : null;
-
-                Task t = new Task(
-                        rs.getInt("id"),
-                        rs.getString("title"),
-                        rs.getString("description"),
-                        rs.getInt("priority"),
-                        deadline
-                );
-
-                t.setTag(getTagByTaskId(conn, t.getId()));
-                list.add(t);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return list;
-    }
-
-
-
-    public List<Task> getAllSortedByPriorityWithTags(boolean asc) {
-        List<Task> list = new ArrayList<>();
-        String sql = "select * from tasks order by priority " + (asc ? "asc" : "desc");
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                Date dl = rs.getDate("deadline");
-                LocalDate deadline = dl != null ? dl.toLocalDate() : null;
-
-                Task t = new Task(
-                        rs.getInt("id"),
-                        rs.getString("title"),
-                        rs.getString("description"),
-                        rs.getInt("priority"),
-                        deadline
-                );
-
-                t.setTag(getTagByTaskId(conn, t.getId()));
-                list.add(t);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return list;
-    }
-
-
-
-
-    public List<Task> getAll() {
-        return getAllWithTags();
-    }
-    public void insert(Task t) {
-        insertWithTags(t, List.of());
-    }
-    public void update(Task t) {
-        updateWithTags(t, List.of());
-    }
-
+    @Override
     public void delete(int id) {
-        String sql = "delete from tasks where id=?";
+        String sql = "DELETE FROM tasks WHERE id = ?";
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+
             ps.setInt(1, id);
             ps.executeUpdate();
-        } catch (Exception e) { e.printStackTrace(); }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
+    @Override
+    public List<Task> search(String keyword) {
+        List<Task> tasks = new ArrayList<>();
 
-    public List<Task> searchByTagWithTags(String tagKeyword) {
-        List<Task> list = new ArrayList<>();
+        String sql = """
+                SELECT t.id, t.title, t.description, t.priority, t.deadline,
+                       g.id AS tag_id, g.name AS tag_name
+                FROM tasks t
+                LEFT JOIN tags g ON t.tag_id = g.id
+                WHERE t.title LIKE ? OR t.description LIKE ?
+                """;
 
-        String sql = """ 
-        select distinct t.* 
-        from tasks t 
-        join task_tags tt on t.id = tt.task_id 
-        join tags tg on tg.id = tt.tag_id 
-        where tg.name like ?;
-    """;
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+            String key = "%" + keyword + "%";
+            ps.setString(1, key);
+            ps.setString(2, key);
 
-            ps.setString(1, "%" + tagKeyword.trim() + "%");
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                Date dl = rs.getDate("deadline");
-                LocalDate deadline = dl != null ? dl.toLocalDate() : null;
-
-                Task t = new Task(
-                        rs.getInt("id"),
-                        rs.getString("title"),
-                        rs.getString("description"),
-                        rs.getInt("priority"),
-                        deadline
-                );
-
-                t.setTag(getTagByTaskId(conn, t.getId()));
-                list.add(t);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    tasks.add(mapRowToTask(rs));
+                }
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return list;
+        return tasks;
     }
 
+    public List<Task> sortByPriority(boolean asc) {
+        List<Task> tasks = new ArrayList<>();
+        String order = asc ? "ASC" : "DESC";
 
-    public List<String> getAllTagNames() {
-        List<String> list = new ArrayList<>();
+        String sql = """
+                SELECT t.id, t.title, t.description, t.priority, t.deadline,
+                       g.id AS tag_id, g.name AS tag_name
+                FROM tasks t
+                LEFT JOIN tags g ON t.tag_id = g.id
+                ORDER BY t.priority %s
+                """.formatted(order);
 
-        try (Connection conn = DatabaseConnection.getConnection()) {
-            String sql = "SELECT name FROM tags ORDER BY name";
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
+        try (Connection conn = DatabaseConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                list.add(rs.getString("name"));
+                tasks.add(mapRowToTask(rs));
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return list;
+        return tasks;
     }
 
-    public void insertTag(String tagName) {
-        if (tagName == null || tagName.trim().isEmpty()) return;
-        String sql = "insert into tags(name) values(?)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, tagName.trim());
-            ps.executeUpdate();
-        } catch (Exception e) {
-            e.printStackTrace();
+    private Task mapRowToTask(ResultSet rs) throws Exception {
+        Task task = new Task();
+        task.setId(rs.getInt("id"));
+        task.setTitle(rs.getString("title"));
+        task.setDescription(rs.getString("description"));
+        task.setPriority(rs.getInt("priority"));
+
+        Date date = rs.getDate("deadline");
+        if (date != null) {
+            task.setDeadline(date.toLocalDate());
         }
-    }
 
-    public void deleteTag(String tagName) {
-        if (tagName == null || tagName.trim().isEmpty()) return;
-        String sql = "delete from tags where name=?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, tagName.trim());
-            ps.executeUpdate();
-        } catch (Exception e) {
-            e.printStackTrace();
+        int tagId = rs.getInt("tag_id");
+        if (!rs.wasNull()) {
+            task.setTag(new Tag(tagId, rs.getString("tag_name")));
         }
+
+        return task;
     }
-
-
-
 }
